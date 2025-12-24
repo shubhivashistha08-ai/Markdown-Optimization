@@ -51,24 +51,24 @@ def main():
     st.set_page_config(
         page_title="Retail Markdown Optimization Assistant",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
     )
 
-    st.title("🛒 Retail Markdown Optimization Assistant")
+    st.title("Retail Markdown Optimization Assistant")
     st.caption(
-        "Understand markdown effectiveness by **category** and **season**, "
-        "then drill down to **individual products by name**."
+        "Understand markdown effectiveness by category and season, "
+        "then drill down to individual products by name."
     )
 
     df = load_data()
     metrics_long = compute_stage_metrics(df)
 
     # ---------- Global sidebar filters ----------
-    st.sidebar.header("🔍 Global Filters")
-    
+    st.sidebar.header("Global filters")
+
     category_options = sorted(df["Category"].unique().tolist())
     season_options = sorted(df["Season"].unique().tolist())
-    
+
     selected_categories = st.sidebar.multiselect(
         "Category", options=category_options, default=category_options
     )
@@ -77,197 +77,179 @@ def main():
     )
 
     filtered_df = df[
-        df["Category"].isin(selected_categories) & 
-        df["Season"].isin(selected_seasons)
+        df["Category"].isin(selected_categories)
+        & df["Season"].isin(selected_seasons)
     ].copy()
     filtered_long = metrics_long[
-        (metrics_long["Category"].isin(selected_categories)) &
-        (metrics_long["Season"].isin(selected_seasons))
+        (metrics_long["Category"].isin(selected_categories))
+        & (metrics_long["Season"].isin(selected_seasons))
     ].copy()
 
-    # ---------- Tabs ----------
-    tab1, tab2 = st.tabs(["📊 Category/Season Dashboard", "🔍 Product Drill-down"])
+    tab1, tab2 = st.tabs(["Category/Season dashboard", "Product drill‑down"])
 
     # -------------------------------------------------------------------------
     # TAB 1: Category / Season Dashboard
     # -------------------------------------------------------------------------
     with tab1:
-        st.subheader("Category × Season Performance Overview")
+        st.subheader("Category × Season performance")
 
         if filtered_long.empty:
-            st.info("No data matches the selected filters.")
+            st.info("No data for the selected filters.")
         else:
-            # Revenue by Category and Stage (pivot table)
-            st.markdown("### 💰 Revenue by markdown stage (per category)")
+            # Revenue by Category & Stage
+            st.markdown("### Revenue by markdown stage (per category)")
             rev_by_cat_stage = (
                 filtered_long.groupby(["Category", "Stage"], as_index=False)["Revenue"]
                 .sum()
             )
-            rev_pivot = rev_by_cat_stage.pivot(
-                index="Category", columns="Stage", values="Revenue"
-            ).fillna(0).round(0).astype(int)
-            st.dataframe(rev_pivot.style.format("{:,}"))
+            rev_pivot = (
+                rev_by_cat_stage.pivot(index="Category", columns="Stage", values="Revenue")
+                .fillna(0)
+                .round(0)
+                .astype(int)
+            )
+            st.dataframe(rev_pivot.style.format("{:,}"), use_container_width=True)
 
-            # Interactive chart
-            st.markdown("#### 📈 Revenue progression by category")
+            # Chart: revenue per stage for selected categories
+            st.markdown("#### Revenue progression across stages")
             chart_cats = st.multiselect(
-                "Categories to chart", options=category_options,
-                default=selected_categories[:min(3, len(selected_categories))]
+                "Categories to chart",
+                options=category_options,
+                default=selected_categories[: min(3, len(selected_categories))],
             )
             if chart_cats:
-                chart_data = filtered_long[
-                    filtered_long["Category"].isin(chart_cats)
-                ].groupby(["Category", "Stage"])["Revenue"].sum().reset_index()
+                chart_data = rev_by_cat_stage[
+                    rev_by_cat_stage["Category"].isin(chart_cats)
+                ]
                 chart_pivot = chart_data.pivot(
                     index="Stage", columns="Category", values="Revenue"
                 ).fillna(0)
                 st.bar_chart(chart_pivot)
-            
-            st.markdown("---")
-            
-            # Season vs Category heatmap
-            st.markdown("### 🌡️ Season × Category: Total Revenue (all stages)")
-            heat_data = (
-                filtered_long.groupby(["Category", "Season"])["Revenue"]
-                .sum().reset_index()
-            )
-            heat_pivot = heat_data.pivot(
-                index="Category", columns="Season", values="Revenue"
-            ).fillna(0).round(0).astype(int)
-            st.dataframe(heat_pivot.style.format("{:,}"))
+            else:
+                st.info("Select at least one category to see the chart.")
 
-            st.markdown("### 💡 Key Insights")
-            st.write("✅ **Revenue grows from M1→M4** = Category responds well to deeper markdowns")
-            st.write("✅ **High Winter/Summer revenue** = Seasonal opportunity for markdowns")
-            st.write("✅ **Compare M4 vs M1 revenue gap** across categories to prioritize")
+            st.markdown("---")
+
+            # Season × Category total revenue
+            st.subheader("Season × Category: total revenue (all stages)")
+            heat = (
+                filtered_long.groupby(["Category", "Season"], as_index=False)["Revenue"]
+                .sum()
+            )
+            heat_pivot = (
+                heat.pivot(index="Category", columns="Season", values="Revenue")
+                .fillna(0)
+                .round(0)
+                .astype(int)
+            )
+            st.dataframe(heat_pivot.style.format("{:,}"), use_container_width=True)
 
     # -------------------------------------------------------------------------
-    # TAB 2: Product Drill-down (BY NAME, not ID)
+    # TAB 2: Product Drill‑down (by name, not ID)
     # -------------------------------------------------------------------------
     with tab2:
-        st.subheader("Product Drill-down")
-        
+        st.subheader("Product drill‑down (by name)")
+
         if filtered_df.empty:
-            st.info("No products match the global filters.")
-        else:
-            # Additional product filters
-            st.markdown("#### 🔧 Product filters")
-            prod_cat = st.selectbox(
-                "Category", options=["All"] + sorted(filtered_df["Category"].unique().tolist())
+            st.info("No products for the selected filters.")
+            return
+
+        # Step 1: product-level filters
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            sel_cat = st.selectbox(
+                "Category", ["All"] + sorted(filtered_df["Category"].unique())
             )
-            prod_brand = st.selectbox(
-                "Brand", options=["All"] + sorted(filtered_df["Brand"].unique().tolist())
+        with col_f2:
+            sel_brand = st.selectbox(
+                "Brand", ["All"] + sorted(filtered_df["Brand"].unique())
             )
 
-            prod_subset = filtered_df.copy()
-            if prod_cat != "All":
-                prod_subset = prod_subset[prod_subset["Category"] == prod_cat]
-            if prod_brand != "All":
-                prod_subset = prod_subset[prod_subset["Brand"] == prod_brand]
+        prod_subset = filtered_df.copy()
+        if sel_cat != "All":
+            prod_subset = prod_subset[prod_subset["Category"] == sel_cat]
+        if sel_brand != "All":
+            prod_subset = prod_subset[prod_subset["Brand"] == sel_brand]
 
-            # Create user-friendly product labels: "Name | Brand | Season"
-            prod_subset = prod_subset.copy()
-            prod_subset["product_label"] = (
-                prod_subset["Product_Name"].str[:30] + "..." 
-                if len(prod_subset["Product_Name"].iloc[0]) > 30 else prod_subset["Product_Name"]
-            ) + " | " + prod_subset["Brand"] + " | " + prod_subset["Season"]
+        if prod_subset.empty:
+            st.info("No products after applying category/brand filters.")
+            return
 
-            product_labels = sorted(prod_subset["product_label"].unique().tolist())
-            
-            if product_labels:
-                selected_label = st.selectbox(
-                    "Select product", options=product_labels, 
-                    format_func=lambda x: x[:60] + "..." if len(x) > 60 else x
-                )
-                
-                # Get the actual row
-                row = prod_subset[
-                    prod_subset["product_label"] == selected_label
-                ].iloc[0]
+        # Step 2: build friendly labels "Product_Name | Brand | Season"
+        prod_subset = prod_subset.copy()
+        prod_subset["product_label"] = (
+            prod_subset["Product_Name"] + " | "
+            + prod_subset["Brand"] + " | "
+            + prod_subset["Season"]
+        )
 
-                # -------- Product info (horizontal) --------
-                st.markdown("### 📋 Product Details")
-                c1, c2, c3, c4 = st.columns(4)
-                
-                with c1:
-                    st.metric("Product", row['Product_Name'])
-                    st.write(f"**Category**: {row['Category']}")
-                    st.write(f"**Brand**: {row['Brand']}")
-                
-                with c2:
-                    st.metric("Original Price", f"${row['Original_Price']:.2f}")
-                    st.metric("Competitor Price", f"${row['Competitor_Price']:.2f}")
-                
-                with c3:
-                    st.metric("Stock", f"{int(row['Stock_Level']):,}")
-                    st.metric("Rating", f"{row['Customer Ratings']:.1f}/5")
-                
-                with c4:
-                    st.metric("Optimal Discount", f"{row['Optimal Discount']:.1%}")
-                    st.write(f"**Season**: {row['Season']}")
+        labels = sorted(prod_subset["product_label"].unique().tolist())
+        selected_label = st.selectbox("Select product", options=labels)
 
-                st.markdown("---")
+        row = prod_subset[prod_subset["product_label"] == selected_label].iloc[0]
 
-                # -------- Markdown stages table --------
-                prod_metrics = filtered_long[
-                    filtered_long["Product_Name"] == row["Product_Name"]
-                ][["Stage", "Markdown", "Sales", "Revenue", "Sell_through"]].copy()
-                
-                prod_metrics = prod_metrics.sort_values("Stage").reset_index(drop=True)
-                prod_metrics["Markdown %"] = (prod_metrics["Markdown"] * 100).round(1)
-                prod_metrics["Revenue $"] = prod_metrics["Revenue"].round(0).astype(int)
+        # Product info (horizontal)
+        st.markdown("### Product info")
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.write(f"**Name**: {row['Product_Name']}")
+            st.write(f"**Category**: {row['Category']}")
+            st.write(f"**Brand**: {row['Brand']}")
+            st.write(f"**Season**: {row['Season']}")
+        with c2:
+            st.write(f"**Original price**: {row['Original_Price']:.2f}")
+            st.write(f"**Competitor price**: {row['Competitor_Price']:.2f}")
+            st.write(f"**Seasonality factor**: {row['Seasonality_Factor']:.2f}")
+        with c3:
+            st.write(f"**Stock level**: {int(row['Stock_Level'])}")
+            st.write(f"**Customer rating**: {row['Customer Ratings']:.1f}")
+            st.write(f"**Return rate**: {row['Return Rate']:.2f}")
+        with c4:
+            st.write(f"**Optimal discount (label)**: {row['Optimal Discount']:.2f}")
+            st.write(f"**Promotion type**: {row['Promotion_Type']}")
 
-                st.markdown("### 📊 Markdown Performance by Stage")
-                st.dataframe(
-                    prod_metrics[["Stage", "Markdown %", "Sales", "Revenue $", "Sell_through"]],
-                    use_container_width=True
-                )
+        st.markdown("---")
 
-                # -------- Charts --------
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown("#### 💰 Revenue by Stage")
-                    chart_rev = prod_metrics.set_index("Stage")[["Revenue $"]]
-                    st.bar_chart(chart_rev)
-                
-                with col2:
-                    st.markdown("#### 📈 Sales by Stage")
-                    chart_sales = prod_metrics.set_index("Stage")[["Sales"]]
-                    st.bar_chart(chart_sales)
+        # Stage metrics for this product
+        prod_metrics = metrics_long[
+            (metrics_long["Product_Name"] == row["Product_Name"])
+            & (metrics_long["Brand"] == row["Brand"])
+            & (metrics_long["Season"] == row["Season"])
+        ][["Stage", "Markdown", "Sales", "Revenue", "Sell_through"]].copy()
 
-                # -------- Best stages --------
-                best_rev_stage = prod_metrics.loc[prod_metrics["Revenue"].idxmax(), "Stage"]
-                best_sell_stage = prod_metrics.loc[prod_metrics["Sell_through"].idxmax(), "Stage"]
+        prod_metrics = prod_metrics.sort_values("Stage").reset_index(drop=True)
+        prod_metrics["Markdown %"] = (prod_metrics["Markdown"] * 100).round(1)
+        prod_metrics["Revenue $"] = prod_metrics["Revenue"].round(0).astype(int)
 
-                st.markdown("### 🎯 Recommendations")
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.success(f"**Best Revenue**: {best_rev_stage}")
-                with c2:
-                    st.success(f"**Best Sell-through**: {best_sell_stage}")
-                with c3:
-                    st.info(f"**Optimal (label)**: {row['Optimal Discount']:.1%}")
+        st.markdown("### Markdown performance by stage")
+        st.dataframe(
+            prod_metrics[["Stage", "Markdown %", "Sales", "Revenue $", "Sell_through"]],
+            use_container_width=True,
+        )
 
-                st.markdown("---")
-                
-                st.markdown("### 💡 Business Interpretation")
-                if best_rev_stage == best_sell_stage == "M4":
-                    st.success(
-                        "✅ **Aggressive markdown recommended**. This product shows strong "
-                        "response to deep discounts (M4 maximizes both revenue and stock clearance)."
-                    )
-                elif best_rev_stage == "M4":
-                    st.warning(
-                        "⚠️ **Deep markdown for revenue**. M4 gives highest revenue but "
-                        "check if sell-through goal is met at earlier stage."
-                    )
-                else:
-                    st.info(
-                        "ℹ️ **Conservative approach works**. Revenue peaks at moderate "
-                        "markdown level; deeper discounts may erode margin unnecessarily."
-                    )
-            else:
-                st.info("No products match the product filters.")
+        # Charts
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.markdown("#### Revenue by stage")
+            st.bar_chart(prod_metrics.set_index("Stage")[["Revenue $"]])
+        with col_c2:
+            st.markdown("#### Sales by stage")
+            st.bar_chart(prod_metrics.set_index("Stage")[["Sales"]])
+
+        # Best stages
+        best_rev_stage = prod_metrics.loc[prod_metrics["Revenue"].idxmax(), "Stage"]
+        best_sell_stage = prod_metrics.loc[prod_metrics["Sell_through"].idxmax(), "Stage"]
+
+        st.markdown("### Interpretation")
+        st.write(
+            f"- **Best revenue stage**: {best_rev_stage} "
+            "(highest total revenue among markdown levels)."
+        )
+        st.write(
+            f"- **Best sell-through stage**: {best_sell_stage} "
+            "(highest fraction of stock sold)."
+        )
+
 
 if __name__ == "__main__":
     main()

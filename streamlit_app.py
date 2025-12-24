@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-DATA_PATH = Path("data") / "SYNTHETIC-Markdown-Dataset.csv"
+DATA_PATH = "data/SYNTHETIC-Markdown-Dataset.csv"
 
 @st.cache_data
 def load_data():

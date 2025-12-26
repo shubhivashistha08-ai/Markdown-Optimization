@@ -227,13 +227,15 @@ def main():
                         "Category": "Category",
                     },
                 )
-                fig.update_yaxes(tickformat=".0f")  # 0, 100, 200, 300...
+                fig.update_yaxes(tickformat=".0f")
+
+                # Show value labels on top of each segment
+                fig.update_traces(
+                    texttemplate="%{y:.1f}M",
+                    textposition="outside",
+                )
 
                 st.plotly_chart(fig, use_container_width=True)
-
-                # Show underlying data
-                st.markdown("##### Data behind this chart")
-                st.dataframe(chart_data[["Category", "Stage", "Revenue"]], use_container_width=True)
 
                 st.markdown("##### How this chart is computed")
                 st.markdown(
@@ -244,7 +246,7 @@ def main():
                     2️⃣ **Group:** Sum revenue by **Category** and **Stage** to get total
                     revenue per category at each markdown stage. [file:64]
 
-                    3️⃣ **Plot:** X‑axis = Stage (M1–M4), Y‑axis = total revenue in **millions**, color = Category.
+                    3️⃣ **Plot:** X‑axis = Stage (M1–M4), Y‑axis = total revenue in **millions**, color = Category, value labels on each stack.
                     """
                 )
             else:

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+import plotly.express as px
 
 
 # ---------- Data loading ----------
@@ -78,39 +79,39 @@ def main():
             """
         )
 
-    st.markdown("### How to use this app")
+    # Optional usage guide
+    show_help = st.checkbox("Show quick usage guide", value=False)
+    if show_help:
+        st.markdown("### How to use this app")
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown(
-            """
-            **Step 1 – Filter context**  
-            Use the left sidebar to pick:
-            - Category  
-            - Season  
-
-            This narrows the view to the part of the business you care about.
-            """
-        )
-    with c2:
-        st.markdown(
-            """
-            **Step 2 – See high‑level impact**  
-            In the *Category/Season dashboard* tab:
-            - Compare **revenue by markdown stage (M1–M4)** per category.  
-            - Check which **Season × Category** pairs generate most markdown revenue.
-            """
-        )
-    with c3:
-        st.markdown(
-            """
-            **Step 3 – Drill into a product**  
-            In the *Product drill‑down* tab:
-            - Choose a product by **Category → Brand → Name**.  
-            - Review **sales, revenue, and sell‑through** at each markdown stage.  
-            - Use the highlighted stages to guide markdown depth.
-            """
-        )
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(
+                """
+                **Step 1 – Filter context**  
+                Use the left sidebar to pick:
+                - Category  
+                - Season  
+                """
+            )
+        with c2:
+            st.markdown(
+                """
+                **Step 2 – See high‑level impact**  
+                In the *Category/Season dashboard* tab:
+                - Compare **revenue by markdown stage (M1–M4)** per category.  
+                - Check which **Season × Category** pairs generate most markdown revenue.
+                """
+            )
+        with c3:
+            st.markdown(
+                """
+                **Step 3 – Drill into a product**  
+                In the *Product drill‑down* tab:
+                - Choose a product by **Category → Brand → Name**.  
+                - Review **sales, revenue, and sell‑through** at each markdown stage.
+                """
+            )
 
     # --- Load data ---
     df = load_data()
@@ -151,10 +152,6 @@ def main():
         best_stage_rev = stage_rev.max()
 
         avg_opt_disc = filtered_df["Optimal Discount"].mean()
-        best_stage_sell = (
-            filtered_long[filtered_long["Stage"] == best_stage]["Sell_through"]
-            .mean()
-        )
 
         with k1:
             st.metric(
@@ -193,6 +190,8 @@ def main():
                 filtered_long.groupby(["Category", "Stage"], as_index=False)["Revenue"]
                 .sum()
             )
+
+            # Pivot for table (absolute numbers)
             rev_pivot = (
                 rev_by_cat_stage.pivot(index="Category", columns="Stage", values="Revenue")
                 .fillna(0)
@@ -201,7 +200,7 @@ def main():
             )
             st.dataframe(rev_pivot.style.format("{:,}"), use_container_width=True)
 
-            # Chart: revenue per stage for selected categories
+            # Chart: revenue per stage for selected categories (Y axis in millions)
             st.markdown("#### Revenue progression across stages")
             chart_cats = st.multiselect(
                 "Categories to chart",
@@ -211,15 +210,30 @@ def main():
             if chart_cats:
                 chart_data = rev_by_cat_stage[
                     rev_by_cat_stage["Category"].isin(chart_cats)
-                ]
-                chart_pivot = chart_data.pivot(
-                    index="Stage", columns="Category", values="Revenue"
-                ).fillna(0)
-                st.bar_chart(chart_pivot)
+                ].copy()
 
-                # Show underlying data and simple flow explanation
+                # Convert revenue to millions for plotting
+                chart_data["Revenue_M"] = chart_data["Revenue"] / 1_000_000
+
+                fig = px.bar(
+                    chart_data,
+                    x="Stage",
+                    y="Revenue_M",
+                    color="Category",
+                    barmode="stack",
+                    labels={
+                        "Stage": "Markdown stage",
+                        "Revenue_M": "Revenue (Millions)",
+                        "Category": "Category",
+                    },
+                )
+                fig.update_yaxes(tickformat=".0f")  # 0, 100, 200, 300...
+
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Show underlying data
                 st.markdown("##### Data behind this chart")
-                st.dataframe(chart_data, use_container_width=True)
+                st.dataframe(chart_data[["Category", "Stage", "Revenue"]], use_container_width=True)
 
                 st.markdown("##### How this chart is computed")
                 st.markdown(
@@ -230,7 +244,7 @@ def main():
                     2️⃣ **Group:** Sum revenue by **Category** and **Stage** to get total
                     revenue per category at each markdown stage. [file:64]
 
-                    3️⃣ **Plot:** X‑axis = Stage (M1–M4), Y‑axis = total revenue, color = Category.
+                    3️⃣ **Plot:** X‑axis = Stage (M1–M4), Y‑axis = total revenue in **millions**, color = Category.
                     """
                 )
             else:

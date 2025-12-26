@@ -1,54 +1,10 @@
 import streamlit as st
-import pandas as pd
-from pathlib import Path
 import plotly.express as px
+import pandas as pd
 
+from src.data_loading import load_markdown_data
+from src.markdown_metrics import compute_stage_metrics
 
-# ---------- Data loading ----------
-
-@st.cache_data
-def load_data() -> pd.DataFrame:
-    csv_path = Path(__file__).parent / "SYNTHETIC Markdown Dataset.csv"
-    df = pd.read_csv(csv_path)
-    return df
-
-
-# ---------- Helper functions ----------
-
-def compute_stage_metrics(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute revenue and sell-through for each markdown stage."""
-    records = []
-    for _, row in df.iterrows():
-        stock = row["Stock_Level"]
-        for stage, md_col, sales_col in [
-            ("M1", "Markdown_1", "Sales_After_M1"),
-            ("M2", "Markdown_2", "Sales_After_M2"),
-            ("M3", "Markdown_3", "Sales_After_M3"),
-            ("M4", "Markdown_4", "Sales_After_M4"),
-        ]:
-            markdown = row[md_col]
-            sales = row[sales_col]
-            price_after = row["Original_Price"] * (1 - markdown)
-            revenue = price_after * sales
-            sell_through = sales / stock if stock > 0 else 0.0
-
-            records.append(
-                {
-                    "Category": row["Category"],
-                    "Season": row["Season"],
-                    "Product_Name": row["Product_Name"],
-                    "Brand": row["Brand"],
-                    "Stage": stage,
-                    "Markdown": markdown,
-                    "Sales": sales,
-                    "Revenue": revenue,
-                    "Sell_through": sell_through,
-                }
-            )
-    return pd.DataFrame(records)
-
-
-# ---------- App ----------
 
 def main():
     st.set_page_config(
@@ -113,9 +69,9 @@ def main():
                 """
             )
 
-    # --- Load data ---
-    df = load_data()
-    metrics_long = compute_stage_metrics(df)
+    # --- Load data & precomputed metrics ---
+    df: pd.DataFrame = load_markdown_data()
+    metrics_long: pd.DataFrame = compute_stage_metrics(df)
 
     # ---------- Global sidebar filters ----------
     st.sidebar.header("Global filters")
@@ -184,14 +140,12 @@ def main():
         if filtered_long.empty:
             st.info("No data for the selected filters.")
         else:
-            # Revenue by Category & Stage
+            # Revenue by Category & Stage (table)
             st.markdown("### Revenue by markdown stage (per category)")
             rev_by_cat_stage = (
                 filtered_long.groupby(["Category", "Stage"], as_index=False)["Revenue"]
                 .sum()
             )
-
-            # Pivot for table (absolute numbers)
             rev_pivot = (
                 rev_by_cat_stage.pivot(index="Category", columns="Stage", values="Revenue")
                 .fillna(0)
@@ -212,7 +166,6 @@ def main():
                     rev_by_cat_stage["Category"].isin(chart_cats)
                 ].copy()
 
-                # Convert revenue to millions for plotting
                 chart_data["Revenue_M"] = chart_data["Revenue"] / 1_000_000
 
                 fig = px.bar(
@@ -228,8 +181,6 @@ def main():
                     },
                 )
                 fig.update_yaxes(tickformat=".0f")
-
-                # Show value labels on top of each segment
                 fig.update_traces(
                     texttemplate="%{y:.1f}M",
                     textposition="outside",
@@ -299,7 +250,7 @@ def main():
             st.info("No products after applying category/brand filters.")
             return
 
-        # Step 2: build friendly labels "Product_Name | Brand | Season"
+        # Step 2: friendly labels "Product_Name | Brand | Season"
         prod_subset = prod_subset.copy()
         prod_subset["product_label"] = (
             prod_subset["Product_Name"] + " | "

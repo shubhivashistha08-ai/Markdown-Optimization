@@ -31,17 +31,19 @@ def compute_stage_metrics(df: pd.DataFrame) -> pd.DataFrame:
             revenue = price_after * sales
             sell_through = sales / stock if stock > 0 else 0.0
 
-            records.append({
-                "Category": row["Category"],
-                "Season": row["Season"],
-                "Product_Name": row["Product_Name"],
-                "Brand": row["Brand"],
-                "Stage": stage,
-                "Markdown": markdown,
-                "Sales": sales,
-                "Revenue": revenue,
-                "Sell_through": sell_through,
-            })
+            records.append(
+                {
+                    "Category": row["Category"],
+                    "Season": row["Season"],
+                    "Product_Name": row["Product_Name"],
+                    "Brand": row["Brand"],
+                    "Stage": stage,
+                    "Markdown": markdown,
+                    "Sales": sales,
+                    "Revenue": revenue,
+                    "Sell_through": sell_through,
+                }
+            )
     return pd.DataFrame(records)
 
 
@@ -55,11 +57,62 @@ def main():
     )
 
     st.title("Retail Markdown Optimization Assistant")
-    st.caption(
-        "Understand markdown effectiveness by category and season, "
-        "then drill down to individual products by name."
-    )
 
+    # --- Problem statement / intro for newcomers ---
+    with st.expander("ℹ️ What problem does this app solve?", expanded=True):
+        st.markdown(
+            """
+            **Business problem**
+
+            Retailers often apply discounts without knowing **how deep** to markdown
+            or **which stage** (M1–M4) gives the best balance between:
+
+            - Clearing seasonal or slow-moving stock  
+            - Protecting profit margin
+
+            This app helps you answer:
+
+            - Which **categories and seasons** respond best to deeper markdowns?
+            - For a given product, which **markdown stage** maximizes
+              **revenue** and **sell-through**?
+            """
+        )
+
+    st.markdown("### How to use this app")
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown(
+            """
+            **Step 1 – Filter context**  
+            Use the left sidebar to pick:
+            - Category  
+            - Season  
+
+            This narrows the view to the part of the business you care about.
+            """
+        )
+    with c2:
+        st.markdown(
+            """
+            **Step 2 – See high‑level impact**  
+            In the *Category/Season dashboard* tab:
+            - Compare **revenue by markdown stage (M1–M4)** per category.  
+            - Check which **Season × Category** pairs generate most markdown revenue.
+            """
+        )
+    with c3:
+        st.markdown(
+            """
+            **Step 3 – Drill into a product**  
+            In the *Product drill‑down* tab:
+            - Choose a product by **Category → Brand → Name**.  
+            - Review **sales, revenue, and sell‑through** at each markdown stage.  
+            - Use the highlighted stages to guide markdown depth.
+            """
+        )
+
+    # --- Load data ---
     df = load_data()
     metrics_long = compute_stage_metrics(df)
 
@@ -85,6 +138,44 @@ def main():
         & (metrics_long["Season"].isin(selected_seasons))
     ].copy()
 
+    # ---------- Dynamic highlight metrics ----------
+    if not filtered_long.empty and not filtered_df.empty:
+        k1, k2, k3 = st.columns(3)
+
+        stage_rev = (
+            filtered_long.groupby("Stage")["Revenue"]
+            .sum()
+            .reindex(["M1", "M2", "M3", "M4"])
+        )
+        best_stage = stage_rev.idxmax()
+        best_stage_rev = stage_rev.max()
+
+        avg_opt_disc = filtered_df["Optimal Discount"].mean()
+        best_stage_sell = (
+            filtered_long[filtered_long["Stage"] == best_stage]["Sell_through"]
+            .mean()
+        )
+
+        with k1:
+            st.metric(
+                "Best markdown stage (revenue)",
+                best_stage,
+                help="Stage with highest total revenue for the current filters.",
+            )
+        with k2:
+            st.metric(
+                "Revenue at best stage",
+                f"{best_stage_rev:,.0f}",
+            )
+        with k3:
+            st.metric(
+                "Avg optimal discount (filtered)",
+                f"{avg_opt_disc:.0%}",
+            )
+
+    st.markdown("---")
+
+    # ---------- Tabs ----------
     tab1, tab2 = st.tabs(["Category/Season dashboard", "Product drill‑down"])
 
     # -------------------------------------------------------------------------

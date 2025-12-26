@@ -235,7 +235,7 @@ with tab1:
         """)
     
     with col2:
-        # Best stage performance chart
+        # Best stage performance chart (still showing labels here if you want)
         stage_revenue_df = markdown_df.groupby("Stage")["Revenue"].sum().reset_index()
         fig = px.bar(
             stage_revenue_df,
@@ -315,6 +315,7 @@ with tab2:
     with col1:
         revenue_by_stage = markdown_df.groupby(["Stage", "Category"])["Revenue"].sum().reset_index()
         
+        # CHART 1: Revenue by Markdown Stage and Category (NO DATA LABELS)
         fig = px.bar(
             revenue_by_stage,
             x="Stage",
@@ -323,9 +324,7 @@ with tab2:
             title="Revenue by Markdown Stage and Category",
             barmode="group",
             color_discrete_sequence=["#FF6B6B", "#4ECDC4", "#45B7D1"],
-            text_auto='.2s'
         )
-        fig.update_traces(texttemplate='$%{text}', textposition='outside')
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
     
@@ -382,6 +381,7 @@ with tab2:
         category_discount["Markdown"] = category_discount["Markdown"] * 100
         category_discount = category_discount.sort_values("Markdown", ascending=False)
         
+        # CHART 2: Average Optimal Discount by Category (NO DATA LABELS)
         fig = px.bar(
             category_discount,
             x="Category",
@@ -389,9 +389,7 @@ with tab2:
             title="Average Optimal Discount by Category",
             color="Markdown",
             color_continuous_scale=["#00D9FF", "#FFB800", "#FF6B6B"],
-            text_auto='.1f'
         )
-        fig.update_traces(texttemplate='%{text}%', textposition='outside')
         fig.update_layout(height=400, yaxis_title="Discount (%)", showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     
@@ -496,6 +494,7 @@ with tab4:
     
     discount_analysis.columns = ["Discount_Range", "Category", "Revenue", "Sales", "Product_Count"]
     
+    # CHART 3: Revenue by Discount Range and Category (NO DATA LABELS)
     fig = px.bar(
         discount_analysis,
         x="Discount_Range",
@@ -504,9 +503,7 @@ with tab4:
         title="Revenue by Discount Range and Category",
         barmode="group",
         color_discrete_sequence=["#FF6B6B", "#4ECDC4", "#45B7D1"],
-        text_auto='.2s'
     )
-    fig.update_traces(texttemplate='$%{text}', textposition='outside')
     fig.update_layout(height=400, xaxis_title="Discount Range", yaxis_title="Total Revenue")
     st.plotly_chart(fig, use_container_width=True)
     

@@ -12,12 +12,26 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
-# Title
+# Load data FIRST
+# --------------------------------------------------
+@st.cache_data
+def load_data():
+    csv_path = Path(__file__).parent / "src" / "SYNTHETIC Markdown Dataset.csv"
+    return pd.read_csv(csv_path)
+
+try:
+    df = load_data()
+except Exception:
+    st.error("❌ Failed to load the dataset.")
+    st.stop()
+
+# --------------------------------------------------
+# App title (only shown if data loads)
 # --------------------------------------------------
 st.title("🛍️ Retail Markdown Optimization Assistant")
 
 # --------------------------------------------------
-# Problem statement (TEXT ONLY — no HTML)
+# Problem statement (TEXT ONLY)
 # --------------------------------------------------
 st.subheader("ℹ️ What problem does this app solve?")
 
@@ -41,20 +55,6 @@ st.markdown(
 )
 
 st.divider()
-
-# --------------------------------------------------
-# Load data (Streamlit Cloud safe)
-# --------------------------------------------------
-@st.cache_data
-def load_data():
-    csv_path = Path(__file__).parent / "src" / "SYNTHETIC Markdown Dataset.csv"
-    return pd.read_csv(csv_path)
-
-try:
-    df = load_data()
-except Exception as e:
-    st.error("❌ Failed to load the dataset.")
-    st.stop()
 
 # --------------------------------------------------
 # Sidebar filters
@@ -86,7 +86,6 @@ filtered_df = df[
 # --------------------------------------------------
 st.subheader("📊 Revenue by Markdown Stage and Category")
 
-# Revenue = Price × (1 - Markdown) × Sales
 filtered_df["Revenue"] = (
     filtered_df["Price"]
     * (1 - filtered_df["Markdown"])
@@ -99,16 +98,13 @@ revenue_stage_category = (
     .sum()
 )
 
-if revenue_stage_category.empty:
-    st.warning("No data available for the selected filters.")
-else:
-    st.bar_chart(
-        revenue_stage_category,
-        x="Stage",
-        y="Revenue",
-        color="Category",
-        use_container_width=True
-    )
+st.bar_chart(
+    revenue_stage_category,
+    x="Stage",
+    y="Revenue",
+    color="Category",
+    use_container_width=True
+)
 
 # --------------------------------------------------
 # Best markdown stage per product

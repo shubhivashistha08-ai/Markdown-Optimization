@@ -1,113 +1,123 @@
 import streamlit as st
 import pandas as pd
-from src.data_loading import load_markdown_data
-from src.markdown_metrics import compute_revenue_by_stage
 
-# -----------------------------
-# Page config
-# -----------------------------
-st.set_page_config(
-    page_title="Retail Markdown Optimization Assistant",
-    layout="wide",
+from src.data_loading import load_markdown_data
+from src.markdown_metrics import (
+    compute_revenue_by_stage_category,
+    compute_best_stage_per_product
 )
 
-# -----------------------------
-# Title
-# -----------------------------
+# --------------------------------------------------
+# Page config
+# --------------------------------------------------
+st.set_page_config(
+    page_title="Retail Markdown Optimization Assistant",
+    page_icon="🛍️",
+    layout="wide"
+)
+
+# --------------------------------------------------
+# App title
+# --------------------------------------------------
 st.title("🛍️ Retail Markdown Optimization Assistant")
 
-# -----------------------------
-# What problem does this app solve?
-# (NO HTML — Streamlit-native blocks)
-# -----------------------------
-with st.container():
-    st.subheader("ℹ️ What problem does this app solve?")
+# --------------------------------------------------
+# Problem statement (NO HTML, NO CSS)
+# --------------------------------------------------
+st.subheader("ℹ️ What problem does this app solve?")
 
-    st.markdown("**Business problem**")
+st.markdown("**Business problem**")
 
-    st.markdown(
-        """
-        Retailers often apply discounts without clearly knowing:
-        - How deep to markdown
-        - Which markdown stage (M1–M4) best balances clearance and profit
-        """
-    )
+st.markdown(
+    """
+Retailers often apply discounts without knowing:
+- How deep to markdown
+- Which markdown stage (M1–M4) balances clearance and profit
+"""
+)
 
-    st.markdown("**This app helps you answer:**")
+st.markdown("**This app helps you answer:**")
 
-    st.markdown(
-        """
-        - Which **categories and seasons** respond best to deeper markdowns  
-        - Which **markdown stage** maximizes revenue and sell-through for a product
-        """
-    )
+st.markdown(
+    """
+- Which **categories and seasons** respond best to deeper markdowns  
+- Which **markdown stage** maximizes revenue and sell-through for a product
+"""
+)
 
 st.divider()
 
-# -----------------------------
+# --------------------------------------------------
 # Load data
-# -----------------------------
-df: pd.DataFrame = load_markdown_data()
+# --------------------------------------------------
+@st.cache_data
+def load_data():
+    return load_markdown_data()
 
-# -----------------------------
-# Filters
-# -----------------------------
+try:
+    df = load_data()
+except Exception as e:
+    st.error("Failed to load markdown dataset.")
+    st.stop()
+
+# --------------------------------------------------
+# Sidebar filters
+# --------------------------------------------------
 st.sidebar.header("🔍 Filters")
 
-category_filter = st.sidebar.multiselect(
-    "Select category",
-    options=sorted(df["Category"].unique()),
-    default=sorted(df["Category"].unique()),
+categories = sorted(df["Category"].unique())
+seasons = sorted(df["Season"].unique())
+
+selected_categories = st.sidebar.multiselect(
+    "Select Category",
+    categories,
+    default=categories
 )
 
-season_filter = st.sidebar.multiselect(
-    "Select season",
-    options=sorted(df["Season"].unique()),
-    default=sorted(df["Season"].unique()),
+selected_seasons = st.sidebar.multiselect(
+    "Select Season",
+    seasons,
+    default=seasons
 )
 
 filtered_df = df[
-    (df["Category"].isin(category_filter))
-    & (df["Season"].isin(season_filter))
+    (df["Category"].isin(selected_categories)) &
+    (df["Season"].isin(selected_seasons))
 ]
 
-# -----------------------------
-# Compute metrics
-# -----------------------------
-revenue_df = compute_revenue_by_stage(filtered_df)
+# --------------------------------------------------
+# Revenue by stage & category
+# --------------------------------------------------
+st.subheader("📊 Revenue by Markdown Stage and Category")
 
-# -----------------------------
-# Chart
-# -----------------------------
-st.subheader("📈 Revenue by Markdown Stage")
+revenue_df = compute_revenue_by_stage_category(filtered_df)
 
-st.bar_chart(
-    revenue_df,
-    x="Stage",
-    y="Revenue",
-    color="Category",
+if revenue_df.empty:
+    st.warning("No data available for the selected filters.")
+else:
+    st.bar_chart(
+        revenue_df,
+        x="Stage",
+        y="Revenue",
+        color="Category",
+        use_container_width=True
+    )
+
+# --------------------------------------------------
+# Best markdown stage per product
+# --------------------------------------------------
+st.subheader("🏆 Best Markdown Stage per Product")
+
+best_stage_df = compute_best_stage_per_product(filtered_df)
+
+st.dataframe(
+    best_stage_df,
+    use_container_width=True,
+    hide_index=True
 )
 
-# -----------------------------
-# How this chart is computed (DROPDOWN)
-# -----------------------------
-with st.expander("📊 How this chart is computed"):
-    st.markdown(
-        """
-        **Step 1 – Row level**  
-        For each product and markdown stage (M1–M4):
-
-        Revenue = Price × (1 − Markdown) × Sales After Markdown
-
-        **Step 2 – Group**  
-        Revenue is summed by **Category** and **Markdown Stage**.
-
-        **Step 3 – Plot**  
-        - X-axis: Markdown stage (M1–M4)  
-        - Y-axis: Revenue  
-        - Color: Category  
-
-        **Step 4 – Insight**  
-        Identify which category and markdown stage combinations generate the strongest revenue lift.
-        """
-    )
+# --------------------------------------------------
+# Footer
+# --------------------------------------------------
+st.divider()
+st.caption("Built with Streamlit • Retail Markdown Optimization Assistant")

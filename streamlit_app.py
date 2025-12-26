@@ -18,9 +18,9 @@ st.set_page_config(
 def load_data():
     csv_path = Path(__file__).parent / "src" / "synthetic_markdown_dataset.csv"
     df = pd.read_csv(csv_path)
+    # Normalize column names: lowercase, strip spaces, replace spaces with underscores
     df.columns = df.columns.str.strip().str.replace(" ", "_").str.lower()
     return df
-
 
 try:
     df = load_data()
@@ -39,7 +39,6 @@ st.title("🛍️ Retail Markdown Optimization Assistant")
 st.subheader("ℹ️ What problem does this app solve?")
 
 st.markdown("**Business problem**")
-
 st.markdown(
     """
 Retailers often apply discounts without knowing:
@@ -49,7 +48,6 @@ Retailers often apply discounts without knowing:
 )
 
 st.markdown("**This app helps you answer:**")
-
 st.markdown(
     """
 - Which **categories and seasons** respond best to deeper markdowns  
@@ -64,8 +62,8 @@ st.divider()
 # --------------------------------------------------
 st.sidebar.header("🔍 Filters")
 
-categories = sorted(df["Category"].unique())
-seasons = sorted(df["Season"].unique())
+categories = sorted(df["category"].unique())
+seasons = sorted(df["season"].unique())
 
 selected_categories = st.sidebar.multiselect(
     "Category",
@@ -80,8 +78,8 @@ selected_seasons = st.sidebar.multiselect(
 )
 
 filtered_df = df[
-    df["Category"].isin(selected_categories) &
-    df["Season"].isin(selected_seasons)
+    df["category"].isin(selected_categories) &
+    df["season"].isin(selected_seasons)
 ]
 
 # --------------------------------------------------
@@ -89,23 +87,23 @@ filtered_df = df[
 # --------------------------------------------------
 st.subheader("📊 Revenue by Markdown Stage and Category")
 
-filtered_df["Revenue"] = (
+filtered_df["revenue"] = (
     filtered_df["price"]
-    * (1 - filtered_df["Markdown"])
-    * filtered_df["Sales_After"]
+    * (1 - filtered_df["markdown"])
+    * filtered_df["sales_after"]
 )
 
 revenue_stage_category = (
     filtered_df
-    .groupby(["Stage", "Category"], as_index=False)["Revenue"]
+    .groupby(["stage", "category"], as_index=False)["revenue"]
     .sum()
 )
 
 st.bar_chart(
     revenue_stage_category,
-    x="Stage",
-    y="Revenue",
-    color="Category",
+    x="stage",
+    y="revenue",
+    color="category",
     use_container_width=True
 )
 
@@ -116,14 +114,14 @@ st.subheader("🏆 Best Markdown Stage per Product")
 
 best_stage = (
     filtered_df
-    .groupby(["Product_ID", "Stage"], as_index=False)["Revenue"]
+    .groupby(["product_id", "stage"], as_index=False)["revenue"]
     .sum()
-    .sort_values(["Product_ID", "Revenue"], ascending=[True, False])
-    .drop_duplicates("Product_ID")
+    .sort_values(["product_id", "revenue"], ascending=[True, False])
+    .drop_duplicates("product_id")
 )
 
 st.dataframe(
-    best_stage.rename(columns={"Stage": "Best_Markdown_Stage"}),
+    best_stage.rename(columns={"stage": "Best_Markdown_Stage"}),
     use_container_width=True,
     hide_index=True
 )

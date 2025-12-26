@@ -13,7 +13,7 @@ def main():
         initial_sidebar_state="expanded",
     )
 
-    st.title("Retail Markdown Optimization Assistant")
+    st.title("🛍️ Retail Markdown Optimization Assistant")
 
     # --- Problem statement / intro for newcomers ---
     with st.expander("ℹ️ What problem does this app solve?", expanded=True):
@@ -188,18 +188,76 @@ def main():
 
                 st.plotly_chart(fig, use_container_width=True)
 
-                st.markdown("##### How this chart is computed")
+                # ===== CREATIVE VISUALIZATION: FLOWCHART STEPS =====
+                st.markdown("##### 📊 How this chart is computed")
+                
+                # Create 4 columns for step visualization
+                col1, col2, col3, col4 = st.columns(4)
+                
+                steps = [
+                    {
+                        "emoji": "📦",
+                        "title": "Step 1: Row Level",
+                        "desc": "For each product & markdown stage M1–M4, compute:\n\n**Revenue** = Original_Price × (1 − Markdown_i) × Sales_After_Mi",
+                        "color": "#667eea"
+                    },
+                    {
+                        "emoji": "📊",
+                        "title": "Step 2: Grouping",
+                        "desc": "Sum revenue by **Category** and **Stage** to get total revenue per category at each markdown stage",
+                        "color": "#764ba2"
+                    },
+                    {
+                        "emoji": "📈",
+                        "title": "Step 3: Visualization",
+                        "desc": "X‑axis = Stage (M1–M4)\nY‑axis = Revenue (Millions)\nColor = Category\nValue labels on each stack",
+                        "color": "#f093fb"
+                    },
+                    {
+                        "emoji": "✨",
+                        "title": "Step 4: Insight",
+                        "desc": "Identify **best-performing stage** and revenue distribution across markdown levels",
+                        "color": "#4facfe"
+                    }
+                ]
+                
+                cols = [col1, col2, col3, col4]
+                for idx, col in enumerate(cols):
+                    with col:
+                        st.markdown(
+                            f"""
+                            <div style="
+                                background: linear-gradient(135deg, {steps[idx]['color']} 0%, rgba(255,255,255,0.1) 100%);
+                                padding: 24px;
+                                border-radius: 14px;
+                                color: white;
+                                text-align: center;
+                                box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+                                height: 280px;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: space-between;
+                                border: 2px solid rgba(255,255,255,0.2);
+                                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                            ">
+                                <div style="font-size: 3em; margin-bottom: 8px;">{steps[idx]['emoji']}</div>
+                                <div style="font-weight: bold; font-size: 1.05em; margin-bottom: 12px; letter-spacing: 0.5px;">{steps[idx]['title']}</div>
+                                <div style="font-size: 0.85em; line-height: 1.5; opacity: 0.95;">{steps[idx]['desc']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                
+                # Add connecting arrows
                 st.markdown(
                     """
-                    1️⃣ **Row level:** For each product and markdown stage M1–M4, compute  
-                    &nbsp;&nbsp;&nbsp;&nbsp;`Revenue = Original_Price × (1 − Markdown_i) × Sales_After_Mi`. [file:64]
-
-                    2️⃣ **Group:** Sum revenue by **Category** and **Stage** to get total
-                    revenue per category at each markdown stage. [file:64]
-
-                    3️⃣ **Plot:** X‑axis = Stage (M1–M4), Y‑axis = total revenue in **millions**, color = Category, value labels on each stack.
-                    """
+                    <div style="text-align: center; margin-top: -20px; font-size: 1.5em; color: #999;">
+                    ↓ → ↓ → ↓ → ↓
+                    </div>
+                    """,
+                    unsafe_allow_html=True
                 )
+
             else:
                 st.info("Select at least one category to see the chart.")
 

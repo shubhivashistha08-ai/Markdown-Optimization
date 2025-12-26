@@ -216,6 +216,23 @@ def main():
                     index="Stage", columns="Category", values="Revenue"
                 ).fillna(0)
                 st.bar_chart(chart_pivot)
+
+                # Show underlying data and simple flow explanation
+                st.markdown("##### Data behind this chart")
+                st.dataframe(chart_data, use_container_width=True)
+
+                st.markdown("##### How this chart is computed")
+                st.markdown(
+                    """
+                    1️⃣ **Row level:** For each product and markdown stage M1–M4, compute  
+                    &nbsp;&nbsp;&nbsp;&nbsp;`Revenue = Original_Price × (1 − Markdown_i) × Sales_After_Mi`. [file:64]
+
+                    2️⃣ **Group:** Sum revenue by **Category** and **Stage** to get total
+                    revenue per category at each markdown stage. [file:64]
+
+                    3️⃣ **Plot:** X‑axis = Stage (M1–M4), Y‑axis = total revenue, color = Category.
+                    """
+                )
             else:
                 st.info("Select at least one category to see the chart.")
 

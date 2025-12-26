@@ -14,10 +14,12 @@ st.set_page_config(
 # --------------------------------------------------
 # Load data FIRST
 # --------------------------------------------------
+
 @st.cache_data
 def load_data():
-    csv_path = Path(__file__).parent / "src" / "SYNTHETIC Markdown Dataset.csv"
+    csv_path = Path(__file__).parent / "src" / "synthetic_markdown_dataset.csv"
     return pd.read_csv(csv_path)
+
 
 try:
     df = load_data()

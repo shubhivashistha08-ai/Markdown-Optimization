@@ -112,7 +112,9 @@ for _, row in filtered_df.iterrows():
             })
 
 markdown_df = pd.DataFrame(markdown_data)
-best_per_product = markdown_df.loc[markdown_df.groupby("Product_ID")["Revenue"].idxmax()]
+best_per_product = markdown_df.loc[
+    markdown_df.groupby("Product_ID")["Revenue"].idxmax()
+]
 
 # --------------------------------------------------
 # Executive Summary KPIs
@@ -162,8 +164,10 @@ with tab1:
     col1, col2 = st.columns([3, 2])
     
     with col1:
-        st.markdown(""
+        st.markdown("""
         **Where We Are Today:**
         
-        Your retail team manages thousands of products across multiple categories. Each month, decisions about 
-        discounting are made manually,
+        Your retail team manages thousands of products across multiple categories. 
+        Each month, decisions about discounting are made manually, often based on intuition 
+        rather than data—leading to missed revenue opportunities and excess inventory.
+        """)

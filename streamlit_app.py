@@ -533,7 +533,6 @@ The goal is to find the "sweet spot" where discounts drive sales without eroding
             color_continuous_scale="Viridis",
             text_auto='.2s'
         )
-        fig.update_traces(texttemplate='$%{text}', textposition='outside')
         fig.update_layout(height=400, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     
